@@ -46,10 +46,8 @@
       background: #f1f1f1;
     }
     img.flag {
-      width: 24px;
+      width: 32px;
       height: auto;
-      vertical-align: middle;
-      margin-right: 5px;
     }
     #admin-panel {
       max-width: 800px;
@@ -84,16 +82,26 @@
     #admin-panel button:hover {
       background: #555;
     }
-    .edit-btn {
+    .action-btn {
       padding: 5px 10px;
       border: none;
-      background: #007BFF;
-      color: #fff;
       border-radius: 4px;
       cursor: pointer;
+      margin: 0 2px;
+    }
+    .edit-btn {
+      background: #007BFF;
+      color: #fff;
     }
     .edit-btn:hover {
       background: #0056b3;
+    }
+    .delete-btn {
+      background: #dc3545;
+      color: #fff;
+    }
+    .delete-btn:hover {
+      background: #a71d2a;
     }
   </style>
 </head>
@@ -119,10 +127,10 @@
     <thead>
       <tr id="table-header">
         <th>Posição</th>
-        <th>País</th>
+        <th>Bandeira</th>
         <th>Jogador</th>
         <th>Elo</th>
-        <!-- A coluna de Ação (edit) será adicionada para admin -->
+        <!-- A coluna de Ação (edit e delete) será adicionada para admin -->
       </tr>
     </thead>
     <tbody id="ranking-body">
@@ -141,6 +149,12 @@
       { nome: "Levon Aronian", elo: 2755, pais: "Armênia", flag: "https://upload.wikimedia.org/wikipedia/commons/2/2f/Flag_of_Armenia.svg" }
     ];
 
+    // Carrega os dados salvos no localStorage (se houver)
+    const savedPlayers = localStorage.getItem('jogadores');
+    if (savedPlayers) {
+      jogadores = JSON.parse(savedPlayers);
+    }
+
     // Verifica se o usuário é admin com base no parâmetro da URL
     const params = new URLSearchParams(window.location.search);
     const isAdmin = params.get("token") === "isadmintrue";
@@ -152,6 +166,11 @@
       const thAcao = document.createElement("th");
       thAcao.textContent = "Ação";
       headerRow.appendChild(thAcao);
+    }
+
+    // Função para salvar os dados no localStorage
+    function savePlayers() {
+      localStorage.setItem('jogadores', JSON.stringify(jogadores));
     }
 
     // Função para renderizar a tabela de jogadores
@@ -169,36 +188,43 @@
         tdPos.textContent = index + 1;
         tr.appendChild(tdPos);
 
-        // Coluna de País (bandeira + nome)
-        const tdPais = document.createElement("td");
+        // Coluna da Bandeira (apenas a imagem)
+        const tdFlag = document.createElement("td");
         const img = document.createElement("img");
         img.src = jogador.flag;
         img.alt = jogador.pais;
         img.className = "flag";
-        tdPais.appendChild(img);
-        const spanPais = document.createElement("span");
-        spanPais.textContent = jogador.pais;
-        tdPais.appendChild(spanPais);
-        tr.appendChild(tdPais);
+        tdFlag.appendChild(img);
+        tr.appendChild(tdFlag);
 
-        // Coluna de Nome do Jogador
+        // Coluna do Nome do Jogador
         const tdNome = document.createElement("td");
         tdNome.textContent = jogador.nome;
         tr.appendChild(tdNome);
 
-        // Coluna de Elo
+        // Coluna do Elo
         const tdElo = document.createElement("td");
         tdElo.textContent = jogador.elo;
         tr.appendChild(tdElo);
 
-        // Coluna de Ação (só para admin)
+        // Coluna de Ação (edição e exclusão, somente para admin)
         if (isAdmin) {
           const tdAcao = document.createElement("td");
+
+          // Botão Editar
           const btnEdit = document.createElement("button");
           btnEdit.textContent = "Edit";
-          btnEdit.className = "edit-btn";
+          btnEdit.className = "action-btn edit-btn";
           btnEdit.addEventListener("click", () => editPlayer(index));
           tdAcao.appendChild(btnEdit);
+
+          // Botão Deletar
+          const btnDelete = document.createElement("button");
+          btnDelete.textContent = "Delete";
+          btnDelete.className = "action-btn delete-btn";
+          btnDelete.addEventListener("click", () => deletePlayer(index));
+          tdAcao.appendChild(btnDelete);
+
           tr.appendChild(tdAcao);
         }
 
@@ -206,7 +232,7 @@
       });
     }
 
-    // Função para editar um jogador (apenas em modo admin)
+    // Função para editar um jogador (modo admin)
     function editPlayer(index) {
       const jogador = jogadores[index];
       const novoNome = prompt("Editar nome do jogador:", jogador.nome);
@@ -217,10 +243,29 @@
       if (novoElo !== null && !isNaN(novoElo) && novoElo.trim() !== "") {
         jogador.elo = parseInt(novoElo);
       }
+      // Permite editar também o país e a URL da bandeira, se desejar
+      const novoPais = prompt("Editar país do jogador:", jogador.pais);
+      if (novoPais !== null && novoPais.trim() !== "") {
+        jogador.pais = novoPais.trim();
+      }
+      const novaFlag = prompt("Editar URL da bandeira:", jogador.flag);
+      if (novaFlag !== null && novaFlag.trim() !== "") {
+        jogador.flag = novaFlag.trim();
+      }
+      savePlayers();
       renderTable();
     }
 
-    // Manipula o envio do formulário de adição de novo jogador (modo admin)
+    // Função para deletar um jogador (modo admin)
+    function deletePlayer(index) {
+      if (confirm("Tem certeza que deseja deletar este jogador?")) {
+        jogadores.splice(index, 1);
+        savePlayers();
+        renderTable();
+      }
+    }
+
+    // Manipula o envio do formulário para adicionar um novo jogador (modo admin)
     if (isAdmin) {
       document.getElementById("add-player-form").addEventListener("submit", (e) => {
         e.preventDefault();
@@ -237,6 +282,7 @@
         };
 
         jogadores.push(novoJogador);
+        savePlayers();
         nomeInput.value = "";
         eloInput.value = "";
         paisInput.value = "";
