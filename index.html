@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Ranking Elo</title>
   <style>
-    /* Reset básico */
     * {
       margin: 0;
       padding: 0;
@@ -102,15 +101,42 @@
     .delete-btn:hover {
       background: #c82333;
     }
+    .inferior-esquerdo {
+      position: fixed;
+      bottom: 10px;
+      left: 10px;
+      font-size: 12px;
+      width: 610px;
+      background-color: #333;
+      color: white;
+      padding: 5px 10px;
+      border-radius: 5px;
+    }
+    /* Estilo para o botão de toggle */
+    #toggle-tab-btn {
+      position: fixed;
+      bottom: 133px;
+      left: 10px;
+      z-index: 1000;
+      padding: 5px 10px;
+      border: none;
+      background: #007BFF;
+      color: #fff;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    #toggle-tab-btn:hover {
+      background: #0056b3;
+    }
   </style>
 </head>
 <body>
   <header>
     <h1>Ranking Elo</h1>
-    <p>Ranking de jogadores com pontuações pré-definidas</p>
+    <p>Bonk.io [Grapple 1v1 Simple] Global Player Ranking</p>
+    <p>Admin: MAGyN</p>
   </header>
 
-  <!-- Painel de Administração: exibido somente se o parâmetro token estiver correto -->
   <div id="admin-panel" style="display:none;">
     <h2>Adicionar Novo Jogador</h2>
     <form id="add-player-form">
@@ -125,27 +151,35 @@
   <table>
     <thead>
       <tr id="table-header">
-        <th>Posição</th>
-        <th>Bandeira</th>
-        <th>Jogador</th>
+        <th>Rank</th>
+        <th>Flag</th>
+        <th>Player</th>
         <th>Elo</th>
-        <!-- A coluna de Ação (edit e delete) será adicionada para admin -->
       </tr>
     </thead>
     <tbody id="ranking-body">
-      <!-- As linhas serão inseridas via JavaScript -->
     </tbody>
   </table>
 
+  <button id="toggle-tab-btn">Minimize</button>
+
+  <div class="inferior-esquerdo">
+    How to play: <br>
+    1. The main room is League 1v1 Grapple. Check if there is a player (NOT GUEST) with nickname GrappleADM <br>
+    2. 1v1 rooms will be created and shared in the main room. The ADM will observe and evaluate the players. <br>
+    3. The winners of a 5-point match gain rating according to the opponent's rating. <br>
+    4. Multiple rooms can be created simultaneously. The ranking will always be updated, with a 10 second delay. <br>
+    Any form of cheating will result in a ban: <br>
+    - Secondary accounts; <br>
+    - Modifying or attempting to hack the scoreboard; <br>
+  </div>
+
   <script>
-    // URL real da API no Repl.it
     const API_URL = "https://8a7b7e9e-26e4-4c56-96f2-ff9d7e38aeaf-00-27yl2tvgyn416.picard.replit.dev";
 
-    // Verifica se o usuário é admin com base no parâmetro da URL
     const params = new URLSearchParams(window.location.search);
     const isAdmin = params.get("token") === "isadmintrue";
 
-    // Se for admin, exibe o painel de administração e adiciona coluna de ação à tabela
     if (isAdmin) {
       document.getElementById("admin-panel").style.display = "block";
       const headerRow = document.getElementById("table-header");
@@ -154,7 +188,6 @@
       headerRow.appendChild(thAcao);
     }
 
-    // Função para buscar os jogadores do servidor
     async function fetchPlayers() {
       try {
         const response = await fetch(API_URL + "/players");
@@ -171,11 +204,9 @@
       }
     }
 
-    // Função para renderizar a tabela de jogadores
     async function renderTable() {
       let jogadores = await fetchPlayers();
 
-      // Ordena os jogadores pelo Elo de forma decrescente
       jogadores.sort((a, b) => b.elo - a.elo);
       const tbody = document.getElementById("ranking-body");
       tbody.innerHTML = "";
@@ -183,12 +214,10 @@
       jogadores.forEach((jogador, index) => {
         const tr = document.createElement("tr");
 
-        // Coluna de Posição
         const tdPos = document.createElement("td");
         tdPos.textContent = index + 1;
         tr.appendChild(tdPos);
 
-        // Coluna de Bandeira (apenas a imagem)
         const tdBandeira = document.createElement("td");
         const img = document.createElement("img");
         img.src = jogador.flag;
@@ -197,28 +226,23 @@
         tdBandeira.appendChild(img);
         tr.appendChild(tdBandeira);
 
-        // Coluna de Nome do Jogador
         const tdNome = document.createElement("td");
         tdNome.textContent = jogador.nome;
         tr.appendChild(tdNome);
 
-        // Coluna de Elo
         const tdElo = document.createElement("td");
         tdElo.textContent = jogador.elo;
         tr.appendChild(tdElo);
 
-        // Coluna de Ação (só para admin)
         if (isAdmin) {
           const tdAcao = document.createElement("td");
-          
-          // Botão de Editar
+
           const btnEdit = document.createElement("button");
           btnEdit.textContent = "Edit";
           btnEdit.className = "edit-btn";
           btnEdit.addEventListener("click", () => editPlayer(jogador.id));
           tdAcao.appendChild(btnEdit);
           
-          // Botão de Deletar
           const btnDelete = document.createElement("button");
           btnDelete.textContent = "Delete";
           btnDelete.className = "delete-btn";
@@ -232,7 +256,6 @@
       });
     }
 
-    // Função para adicionar novo jogador
     async function addPlayer(jogador) {
       try {
         const response = await fetch(API_URL + "/players", {
@@ -251,7 +274,6 @@
       }
     }
 
-    // Função para editar jogador
     async function editPlayer(id) {
       const novoNome = prompt("Editar nome do jogador:");
       const novoElo = prompt("Editar Elo do jogador:");
@@ -277,7 +299,6 @@
       }
     }
 
-    // Função para deletar jogador
     async function deletePlayer(id) {
       if (!confirm("Tem certeza que deseja deletar este jogador?")) return;
       try {
@@ -293,7 +314,6 @@
       }
     }
 
-    // Manipula o envio do formulário de adição de novo jogador (modo admin)
     if (isAdmin) {
       document.getElementById("add-player-form").addEventListener("submit", async (e) => {
         e.preventDefault();
@@ -318,7 +338,19 @@
       });
     }
 
-    // Renderiza a tabela ao carregar a página
+    const toggleButton = document.getElementById("toggle-tab-btn");
+    const inferiorEsquerdo = document.querySelector(".inferior-esquerdo");
+
+    toggleButton.addEventListener("click", function() {
+      if (inferiorEsquerdo.style.display === "none") {
+        inferiorEsquerdo.style.display = "block";
+        toggleButton.textContent = "Minimize";
+      } else {
+        inferiorEsquerdo.style.display = "none";
+        toggleButton.textContent = "Maximize";
+      }
+    });
+
     renderTable();
   </script>
 </body>
