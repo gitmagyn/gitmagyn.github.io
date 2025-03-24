@@ -1,7 +1,112 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ranking Elo</title>
+  <style>
+    /* Reset básico */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      color: #333;
+      padding: 20px;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    h1 {
+      font-size: 2.5em;
+      margin-bottom: 10px;
+    }
+    table {
+      width: 100%;
+      max-width: 600px;
+      margin: 0 auto;
+      border-collapse: collapse;
+      background: #fff;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    thead {
+      background: #333;
+      color: #fff;
+    }
+    th, td {
+      padding: 12px 15px;
+      text-align: center;
+      border-bottom: 1px solid #ddd;
+    }
+    tbody tr:hover {
+      background: #f1f1f1;
+    }
+    @media (max-width: 600px) {
+      th, td {
+        padding: 10px;
+        font-size: 0.9em;
+      }
+    }
+  </style>
+</head>
 <body>
-<h1>Hello World</h1>
-<p>I'm hosted with GitHub Pages.</p>
+  <header>
+    <h1>Ranking Elo</h1>
+    <p>Ranking de jogadores com pontuações pré-definidas</p>
+  </header>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Posição</th>
+        <th>Jogador</th>
+        <th>Elo</th>
+      </tr>
+    </thead>
+    <tbody id="ranking-body">
+      <!-- As linhas serão inseridas via JavaScript -->
+    </tbody>
+  </table>
+
+  <script>
+    // Array de jogadores com pontuações pré-definidas
+    const jogadores = [
+      { nome: "Magnus Carlsen", elo: 2862 },
+      { nome: "Fabiano Caruana", elo: 2820 },
+      { nome: "Ding Liren", elo: 2791 },
+      { nome: "Ian Nepomniachtchi", elo: 2789 },
+      { nome: "Hikaru Nakamura", elo: 2778 },
+      { nome: "Levon Aronian", elo: 2755 }
+    ];
+
+    // Ordena os jogadores do maior para o menor Elo
+    jogadores.sort((a, b) => b.elo - a.elo);
+
+    // Seleciona o elemento tbody para inserir as linhas
+    const tbody = document.getElementById("ranking-body");
+
+    // Cria e insere as linhas da tabela
+    jogadores.forEach((jogador, index) => {
+      const tr = document.createElement("tr");
+
+      const tdPos = document.createElement("td");
+      tdPos.textContent = index + 1;
+      tr.appendChild(tdPos);
+
+      const tdNome = document.createElement("td");
+      tdNome.textContent = jogador.nome;
+      tr.appendChild(tdNome);
+
+      const tdElo = document.createElement("td");
+      tdElo.textContent = jogador.elo;
+      tr.appendChild(tdElo);
+
+      tbody.appendChild(tr);
+    });
+  </script>
 </body>
 </html>
