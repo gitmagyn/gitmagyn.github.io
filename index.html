@@ -27,7 +27,7 @@
     }
     table {
       width: 100%;
-      max-width: 600px;
+      max-width: 800px;
       margin: 0 auto;
       border-collapse: collapse;
       background: #fff;
@@ -45,11 +45,55 @@
     tbody tr:hover {
       background: #f1f1f1;
     }
-    @media (max-width: 600px) {
-      th, td {
-        padding: 10px;
-        font-size: 0.9em;
-      }
+    img.flag {
+      width: 24px;
+      height: auto;
+      vertical-align: middle;
+      margin-right: 5px;
+    }
+    #admin-panel {
+      max-width: 800px;
+      margin: 20px auto;
+      background: #fff;
+      padding: 15px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    #admin-panel h2 {
+      margin-bottom: 10px;
+    }
+    #admin-panel form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    #admin-panel input[type="text"],
+    #admin-panel input[type="number"] {
+      flex: 1;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    #admin-panel button {
+      padding: 8px 15px;
+      border: none;
+      background: #333;
+      color: #fff;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    #admin-panel button:hover {
+      background: #555;
+    }
+    .edit-btn {
+      padding: 5px 10px;
+      border: none;
+      background: #007BFF;
+      color: #fff;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .edit-btn:hover {
+      background: #0056b3;
     }
   </style>
 </head>
@@ -59,12 +103,26 @@
     <p>Ranking de jogadores com pontuações pré-definidas</p>
   </header>
 
+  <!-- Painel de Administração: exibido somente se o parâmetro token estiver correto -->
+  <div id="admin-panel" style="display:none;">
+    <h2>Adicionar Novo Jogador</h2>
+    <form id="add-player-form">
+      <input type="text" id="nome" placeholder="Nome do Jogador" required>
+      <input type="number" id="elo" placeholder="Elo" required>
+      <input type="text" id="pais" placeholder="País" required>
+      <input type="text" id="flag" placeholder="URL da Bandeira" required>
+      <button type="submit">Adicionar Jogador</button>
+    </form>
+  </div>
+
   <table>
     <thead>
-      <tr>
+      <tr id="table-header">
         <th>Posição</th>
+        <th>País</th>
         <th>Jogador</th>
         <th>Elo</th>
+        <!-- A coluna de Ação (edit) será adicionada para admin -->
       </tr>
     </thead>
     <tbody id="ranking-body">
@@ -73,40 +131,122 @@
   </table>
 
   <script>
-    // Array de jogadores com pontuações pré-definidas
-    const jogadores = [
-      { nome: "Magnus Carlsen", elo: 2862 },
-      { nome: "Fabiano Caruana", elo: 2820 },
-      { nome: "Ding Liren", elo: 2791 },
-      { nome: "Ian Nepomniachtchi", elo: 2789 },
-      { nome: "Hikaru Nakamura", elo: 2778 },
-      { nome: "Levon Aronian", elo: 2755 }
+    // Dados iniciais dos jogadores
+    let jogadores = [
+      { nome: "Magnus Carlsen", elo: 2862, pais: "Noruega", flag: "https://upload.wikimedia.org/wikipedia/commons/d/d9/Flag_of_Norway.svg" },
+      { nome: "Fabiano Caruana", elo: 2820, pais: "Estados Unidos", flag: "https://upload.wikimedia.org/wikipedia/en/a/a4/Flag_of_the_United_States.svg" },
+      { nome: "Ding Liren", elo: 2791, pais: "China", flag: "https://upload.wikimedia.org/wikipedia/commons/0/0d/Flag_of_China.svg" },
+      { nome: "Ian Nepomniachtchi", elo: 2789, pais: "Rússia", flag: "https://upload.wikimedia.org/wikipedia/en/f/f3/Flag_of_Russia.svg" },
+      { nome: "Hikaru Nakamura", elo: 2778, pais: "Estados Unidos", flag: "https://upload.wikimedia.org/wikipedia/en/a/a4/Flag_of_the_United_States.svg" },
+      { nome: "Levon Aronian", elo: 2755, pais: "Armênia", flag: "https://upload.wikimedia.org/wikipedia/commons/2/2f/Flag_of_Armenia.svg" }
     ];
 
-    // Ordena os jogadores do maior para o menor Elo
-    jogadores.sort((a, b) => b.elo - a.elo);
+    // Verifica se o usuário é admin com base no parâmetro da URL
+    const params = new URLSearchParams(window.location.search);
+    const isAdmin = params.get("token") === "isadmintrue";
 
-    // Seleciona o elemento tbody para inserir as linhas
-    const tbody = document.getElementById("ranking-body");
+    // Se for admin, exibe o painel de administração e adiciona coluna de ação à tabela
+    if (isAdmin) {
+      document.getElementById("admin-panel").style.display = "block";
+      const headerRow = document.getElementById("table-header");
+      const thAcao = document.createElement("th");
+      thAcao.textContent = "Ação";
+      headerRow.appendChild(thAcao);
+    }
 
-    // Cria e insere as linhas da tabela
-    jogadores.forEach((jogador, index) => {
-      const tr = document.createElement("tr");
+    // Função para renderizar a tabela de jogadores
+    function renderTable() {
+      // Ordena os jogadores pelo Elo de forma decrescente
+      jogadores.sort((a, b) => b.elo - a.elo);
+      const tbody = document.getElementById("ranking-body");
+      tbody.innerHTML = "";
 
-      const tdPos = document.createElement("td");
-      tdPos.textContent = index + 1;
-      tr.appendChild(tdPos);
+      jogadores.forEach((jogador, index) => {
+        const tr = document.createElement("tr");
 
-      const tdNome = document.createElement("td");
-      tdNome.textContent = jogador.nome;
-      tr.appendChild(tdNome);
+        // Coluna de Posição
+        const tdPos = document.createElement("td");
+        tdPos.textContent = index + 1;
+        tr.appendChild(tdPos);
 
-      const tdElo = document.createElement("td");
-      tdElo.textContent = jogador.elo;
-      tr.appendChild(tdElo);
+        // Coluna de País (bandeira + nome)
+        const tdPais = document.createElement("td");
+        const img = document.createElement("img");
+        img.src = jogador.flag;
+        img.alt = jogador.pais;
+        img.className = "flag";
+        tdPais.appendChild(img);
+        const spanPais = document.createElement("span");
+        spanPais.textContent = jogador.pais;
+        tdPais.appendChild(spanPais);
+        tr.appendChild(tdPais);
 
-      tbody.appendChild(tr);
-    });
+        // Coluna de Nome do Jogador
+        const tdNome = document.createElement("td");
+        tdNome.textContent = jogador.nome;
+        tr.appendChild(tdNome);
+
+        // Coluna de Elo
+        const tdElo = document.createElement("td");
+        tdElo.textContent = jogador.elo;
+        tr.appendChild(tdElo);
+
+        // Coluna de Ação (só para admin)
+        if (isAdmin) {
+          const tdAcao = document.createElement("td");
+          const btnEdit = document.createElement("button");
+          btnEdit.textContent = "Edit";
+          btnEdit.className = "edit-btn";
+          btnEdit.addEventListener("click", () => editPlayer(index));
+          tdAcao.appendChild(btnEdit);
+          tr.appendChild(tdAcao);
+        }
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Função para editar um jogador (apenas em modo admin)
+    function editPlayer(index) {
+      const jogador = jogadores[index];
+      const novoNome = prompt("Editar nome do jogador:", jogador.nome);
+      if (novoNome !== null && novoNome.trim() !== "") {
+        jogador.nome = novoNome.trim();
+      }
+      const novoElo = prompt("Editar Elo do jogador:", jogador.elo);
+      if (novoElo !== null && !isNaN(novoElo) && novoElo.trim() !== "") {
+        jogador.elo = parseInt(novoElo);
+      }
+      renderTable();
+    }
+
+    // Manipula o envio do formulário de adição de novo jogador (modo admin)
+    if (isAdmin) {
+      document.getElementById("add-player-form").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const nomeInput = document.getElementById("nome");
+        const eloInput = document.getElementById("elo");
+        const paisInput = document.getElementById("pais");
+        const flagInput = document.getElementById("flag");
+
+        const novoJogador = {
+          nome: nomeInput.value.trim(),
+          elo: parseInt(eloInput.value),
+          pais: paisInput.value.trim(),
+          flag: flagInput.value.trim()
+        };
+
+        jogadores.push(novoJogador);
+        nomeInput.value = "";
+        eloInput.value = "";
+        paisInput.value = "";
+        flagInput.value = "";
+        renderTable();
+      });
+    }
+
+    // Renderiza a tabela ao carregar a página
+    renderTable();
   </script>
 </body>
 </html>

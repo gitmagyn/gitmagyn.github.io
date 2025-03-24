@@ -1,1 +1,1 @@
-# grappleelo
+# A Global Bonk.io Ranking of 1v1 grapple players
