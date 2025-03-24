@@ -27,7 +27,7 @@
     }
     table {
       width: 100%;
-      max-width: 800px;
+      max-width: 1000px;
       margin: 0 auto;
       border-collapse: collapse;
       background: #fff;
@@ -50,7 +50,7 @@
       height: auto;
     }
     #admin-panel {
-      max-width: 800px;
+      max-width: 1000px;
       margin: 20px auto;
       background: #fff;
       padding: 15px;
@@ -82,26 +82,25 @@
     #admin-panel button:hover {
       background: #555;
     }
-    .action-btn {
+    .edit-btn, .delete-btn {
       padding: 5px 10px;
       border: none;
+      color: #fff;
       border-radius: 4px;
       cursor: pointer;
       margin: 0 2px;
     }
     .edit-btn {
       background: #007BFF;
-      color: #fff;
     }
     .edit-btn:hover {
       background: #0056b3;
     }
     .delete-btn {
       background: #dc3545;
-      color: #fff;
     }
     .delete-btn:hover {
-      background: #a71d2a;
+      background: #c82333;
     }
   </style>
 </head>
@@ -139,21 +138,8 @@
   </table>
 
   <script>
-    // Dados iniciais dos jogadores
-    let jogadores = [
-      { nome: "Magnus Carlsen", elo: 2862, pais: "Noruega", flag: "https://upload.wikimedia.org/wikipedia/commons/d/d9/Flag_of_Norway.svg" },
-      { nome: "Fabiano Caruana", elo: 2820, pais: "Estados Unidos", flag: "https://upload.wikimedia.org/wikipedia/en/a/a4/Flag_of_the_United_States.svg" },
-      { nome: "Ding Liren", elo: 2791, pais: "China", flag: "https://upload.wikimedia.org/wikipedia/commons/0/0d/Flag_of_China.svg" },
-      { nome: "Ian Nepomniachtchi", elo: 2789, pais: "Rússia", flag: "https://upload.wikimedia.org/wikipedia/en/f/f3/Flag_of_Russia.svg" },
-      { nome: "Hikaru Nakamura", elo: 2778, pais: "Estados Unidos", flag: "https://upload.wikimedia.org/wikipedia/en/a/a4/Flag_of_the_United_States.svg" },
-      { nome: "Levon Aronian", elo: 2755, pais: "Armênia", flag: "https://upload.wikimedia.org/wikipedia/commons/2/2f/Flag_of_Armenia.svg" }
-    ];
-
-    // Carrega os dados salvos no localStorage (se houver)
-    const savedPlayers = localStorage.getItem('jogadores');
-    if (savedPlayers) {
-      jogadores = JSON.parse(savedPlayers);
-    }
+    // Coloque aqui o link da sua API do Repl.it
+    const API_URL = "https://8a7b7e9e-26e4-4c56-96f2-ff9d7e38aeaf-00-27yl2tvgyn416.picard.replit.dev/"; // Exemplo: "https://meu-servidor-replit.herokuapp.com"
 
     // Verifica se o usuário é admin com base no parâmetro da URL
     const params = new URLSearchParams(window.location.search);
@@ -168,13 +154,22 @@
       headerRow.appendChild(thAcao);
     }
 
-    // Função para salvar os dados no localStorage
-    function savePlayers() {
-      localStorage.setItem('jogadores', JSON.stringify(jogadores));
+    // Função para buscar os jogadores do servidor
+    async function fetchPlayers() {
+      try {
+        const response = await fetch(API_URL + "/players");
+        const data = await response.json();
+        return data;
+      } catch (error) {
+        console.error("Erro ao buscar jogadores:", error);
+        return [];
+      }
     }
 
     // Função para renderizar a tabela de jogadores
-    function renderTable() {
+    async function renderTable() {
+      let jogadores = await fetchPlayers();
+
       // Ordena os jogadores pelo Elo de forma decrescente
       jogadores.sort((a, b) => b.elo - a.elo);
       const tbody = document.getElementById("ranking-body");
@@ -188,43 +183,43 @@
         tdPos.textContent = index + 1;
         tr.appendChild(tdPos);
 
-        // Coluna da Bandeira (apenas a imagem)
-        const tdFlag = document.createElement("td");
+        // Coluna de Bandeira (apenas imagem)
+        const tdBandeira = document.createElement("td");
         const img = document.createElement("img");
         img.src = jogador.flag;
         img.alt = jogador.pais;
         img.className = "flag";
-        tdFlag.appendChild(img);
-        tr.appendChild(tdFlag);
+        tdBandeira.appendChild(img);
+        tr.appendChild(tdBandeira);
 
-        // Coluna do Nome do Jogador
+        // Coluna de Nome do Jogador
         const tdNome = document.createElement("td");
         tdNome.textContent = jogador.nome;
         tr.appendChild(tdNome);
 
-        // Coluna do Elo
+        // Coluna de Elo
         const tdElo = document.createElement("td");
         tdElo.textContent = jogador.elo;
         tr.appendChild(tdElo);
 
-        // Coluna de Ação (edição e exclusão, somente para admin)
+        // Coluna de Ação (só para admin)
         if (isAdmin) {
           const tdAcao = document.createElement("td");
-
-          // Botão Editar
+          
+          // Botão de Editar
           const btnEdit = document.createElement("button");
           btnEdit.textContent = "Edit";
-          btnEdit.className = "action-btn edit-btn";
-          btnEdit.addEventListener("click", () => editPlayer(index));
+          btnEdit.className = "edit-btn";
+          btnEdit.addEventListener("click", () => editPlayer(jogador.id));
           tdAcao.appendChild(btnEdit);
-
-          // Botão Deletar
+          
+          // Botão de Deletar
           const btnDelete = document.createElement("button");
           btnDelete.textContent = "Delete";
-          btnDelete.className = "action-btn delete-btn";
-          btnDelete.addEventListener("click", () => deletePlayer(index));
+          btnDelete.className = "delete-btn";
+          btnDelete.addEventListener("click", () => deletePlayer(jogador.id));
           tdAcao.appendChild(btnDelete);
-
+          
           tr.appendChild(tdAcao);
         }
 
@@ -232,42 +227,61 @@
       });
     }
 
-    // Função para editar um jogador (modo admin)
-    function editPlayer(index) {
-      const jogador = jogadores[index];
-      const novoNome = prompt("Editar nome do jogador:", jogador.nome);
-      if (novoNome !== null && novoNome.trim() !== "") {
-        jogador.nome = novoNome.trim();
-      }
-      const novoElo = prompt("Editar Elo do jogador:", jogador.elo);
-      if (novoElo !== null && !isNaN(novoElo) && novoElo.trim() !== "") {
-        jogador.elo = parseInt(novoElo);
-      }
-      // Permite editar também o país e a URL da bandeira, se desejar
-      const novoPais = prompt("Editar país do jogador:", jogador.pais);
-      if (novoPais !== null && novoPais.trim() !== "") {
-        jogador.pais = novoPais.trim();
-      }
-      const novaFlag = prompt("Editar URL da bandeira:", jogador.flag);
-      if (novaFlag !== null && novaFlag.trim() !== "") {
-        jogador.flag = novaFlag.trim();
-      }
-      savePlayers();
-      renderTable();
-    }
-
-    // Função para deletar um jogador (modo admin)
-    function deletePlayer(index) {
-      if (confirm("Tem certeza que deseja deletar este jogador?")) {
-        jogadores.splice(index, 1);
-        savePlayers();
+    // Função para adicionar novo jogador
+    async function addPlayer(jogador) {
+      try {
+        await fetch(API_URL + "/players", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(jogador)
+        });
         renderTable();
+      } catch (error) {
+        console.error("Erro ao adicionar jogador:", error);
       }
     }
 
-    // Manipula o envio do formulário para adicionar um novo jogador (modo admin)
+    // Função para editar jogador
+    async function editPlayer(id) {
+      const novoNome = prompt("Editar nome do jogador:");
+      const novoElo = prompt("Editar Elo do jogador:");
+      if (novoNome === null || novoElo === null) return;
+      const updatedData = {
+        nome: novoNome.trim(),
+        elo: parseInt(novoElo)
+      };
+      try {
+        await fetch(API_URL + "/players/" + id, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(updatedData)
+        });
+        renderTable();
+      } catch (error) {
+        console.error("Erro ao editar jogador:", error);
+      }
+    }
+
+    // Função para deletar jogador
+    async function deletePlayer(id) {
+      if (!confirm("Tem certeza que deseja deletar este jogador?")) return;
+      try {
+        await fetch(API_URL + "/players/" + id, {
+          method: "DELETE"
+        });
+        renderTable();
+      } catch (error) {
+        console.error("Erro ao deletar jogador:", error);
+      }
+    }
+
+    // Manipula o envio do formulário de adição de novo jogador (modo admin)
     if (isAdmin) {
-      document.getElementById("add-player-form").addEventListener("submit", (e) => {
+      document.getElementById("add-player-form").addEventListener("submit", async (e) => {
         e.preventDefault();
         const nomeInput = document.getElementById("nome");
         const eloInput = document.getElementById("elo");
@@ -281,13 +295,12 @@
           flag: flagInput.value.trim()
         };
 
-        jogadores.push(novoJogador);
-        savePlayers();
+        await addPlayer(novoJogador);
+
         nomeInput.value = "";
         eloInput.value = "";
         paisInput.value = "";
         flagInput.value = "";
-        renderTable();
       });
     }
 
