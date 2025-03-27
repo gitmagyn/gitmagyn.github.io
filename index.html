@@ -43,6 +43,7 @@
     }
     tbody tr:hover {
       background: #f1f1f1;
+      cursor: pointer;
     }
     img.flag {
       width: 32px;
@@ -62,6 +63,7 @@
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
+      margin-bottom: 20px;
     }
     #admin-panel input[type="text"],
     #admin-panel input[type="number"] {
@@ -112,7 +114,6 @@
       padding: 5px 10px;
       border-radius: 5px;
     }
-    /* Estilo para o botão de toggle */
     #toggle-tab-btn {
       position: fixed;
       bottom: 133px;
@@ -137,7 +138,9 @@
     <p>Admin: MAGyN</p>
   </header>
 
+  <!-- Painel de Admin -->
   <div id="admin-panel" style="display:none;">
+    <!-- Formulário para adicionar novo jogador -->
     <h2>Adicionar Novo Jogador</h2>
     <form id="add-player-form">
       <input type="text" id="nome" placeholder="Nome do Jogador" required>
@@ -145,6 +148,21 @@
       <input type="text" id="pais" placeholder="País" required>
       <input type="text" id="flag" placeholder="URL da Bandeira" required>
       <button type="submit">Adicionar Jogador</button>
+    </form>
+    <!-- Formulário para registrar batalha -->
+    <h2>Registrar Batalha</h2>
+    <form id="battle-form">
+      <input type="text" id="player1" placeholder="Nickname do Player 1" required>
+      <input type="text" id="player2" placeholder="Nickname do Player 2" required>
+      <div>
+        <label>
+          <input type="radio" name="winner" value="player1" required> Player 1 Venceu
+        </label>
+        <label>
+          <input type="radio" name="winner" value="player2" required> Player 2 Venceu
+        </label>
+      </div>
+      <button type="submit">Registrar Batalha</button>
     </form>
   </div>
 
@@ -214,6 +232,9 @@
       jogadores.forEach((jogador, index) => {
         const tr = document.createElement("tr");
 
+        // Ao clicar na linha, abre uma nova aba com os status do jogador
+        tr.addEventListener("click", () => openPlayerTab(jogador));
+
         const tdPos = document.createElement("td");
         tdPos.textContent = index + 1;
         tr.appendChild(tdPos);
@@ -240,13 +261,19 @@
           const btnEdit = document.createElement("button");
           btnEdit.textContent = "Edit";
           btnEdit.className = "edit-btn";
-          btnEdit.addEventListener("click", () => editPlayer(jogador.id));
+          btnEdit.addEventListener("click", (event) => {
+            event.stopPropagation(); // Evita abrir a nova aba
+            editPlayer(jogador.id);
+          });
           tdAcao.appendChild(btnEdit);
           
           const btnDelete = document.createElement("button");
           btnDelete.textContent = "Delete";
           btnDelete.className = "delete-btn";
-          btnDelete.addEventListener("click", () => deletePlayer(jogador.id));
+          btnDelete.addEventListener("click", (event) => {
+            event.stopPropagation(); // Evita abrir a nova aba
+            deletePlayer(jogador.id);
+          });
           tdAcao.appendChild(btnDelete);
           
           tr.appendChild(tdAcao);
@@ -314,7 +341,111 @@
       }
     }
 
+    // Função para abrir uma nova aba com os status do jogador
+    function openPlayerTab(jogador) {
+      const novaAba = window.open('', '_blank');
+      novaAba.document.write(`
+        <!DOCTYPE html>
+        <html lang="pt-BR">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>Status do Jogador</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              background: #f4f4f4;
+              color: #333;
+              margin: 20px;
+            }
+            .container {
+              max-width: 800px;
+              margin: auto;
+              background: #fff;
+              padding: 20px;
+              border-radius: 8px;
+              box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            }
+            .container h1 {
+              margin-bottom: 15px;
+            }
+            .container p {
+              font-size: 1.2em;
+              margin-bottom: 10px;
+            }
+            img.flag {
+              width: 64px;
+              height: auto;
+              display: block;
+              margin-top: 10px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>${jogador.nome}</h1>
+            <p><strong>Elo:</strong> ${jogador.elo}</p>
+            <p><strong>País:</strong> ${jogador.pais}</p>
+            <img src="${jogador.flag}" alt="${jogador.pais}" class="flag">
+          </div>
+        </body>
+        </html>
+      `);
+      novaAba.document.close();
+    }
+
+    // Evento do formulário de batalha
     if (isAdmin) {
+      document.getElementById("battle-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const nickname1 = document.getElementById("player1").value.trim();
+        const nickname2 = document.getElementById("player2").value.trim();
+        const winner = document.querySelector('input[name="winner"]:checked').value;
+        
+        // Busca os jogadores a partir do nickname (assumindo que 'nome' é o nickname)
+        const players = await fetchPlayers();
+        const playerA = players.find(p => p.nome === nickname1);
+        const playerB = players.find(p => p.nome === nickname2);
+        
+        if (!playerA || !playerB) {
+          alert("Um ou ambos os jogadores não foram encontrados.");
+          return;
+        }
+        
+        // Cálculo do rating utilizando o algoritmo Elo
+        const K = 32;
+        const R_A = playerA.elo;
+        const R_B = playerB.elo;
+        const E_A = 1 / (1 + Math.pow(10, ((R_B - R_A) / 400)));
+        const E_B = 1 / (1 + Math.pow(10, ((R_A - R_B) / 400)));
+        const S_A = winner === "player1" ? 1 : 0;
+        const S_B = winner === "player2" ? 1 : 0;
+        const newRatingA = Math.round(R_A + K * (S_A - E_A));
+        const newRatingB = Math.round(R_B + K * (S_B - E_B));
+        
+        try {
+          const updateA = await fetch(API_URL + "/players/" + playerA.id, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ nome: playerA.nome, elo: newRatingA })
+          });
+          const updateB = await fetch(API_URL + "/players/" + playerB.id, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ nome: playerB.nome, elo: newRatingB })
+          });
+          if (!updateA.ok || !updateB.ok) {
+            console.error("Erro ao atualizar ratings dos jogadores.");
+          } else {
+            alert("Batalha registrada e ratings atualizados!");
+          }
+          renderTable();
+        } catch (error) {
+          console.error("Erro ao registrar batalha:", error);
+        }
+      });
+      
+      // Também adiciona o listener para o formulário de adicionar jogador
       document.getElementById("add-player-form").addEventListener("submit", async (e) => {
         e.preventDefault();
         const nomeInput = document.getElementById("nome");
