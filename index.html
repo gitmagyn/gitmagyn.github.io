@@ -246,7 +246,7 @@
       jogadores.forEach((jogador, index) => {
         const tr = document.createElement("tr");
 
-        // Ao clicar na linha, abre uma nova aba com os status do jogador (incluindo gráfico e histórico de batalhas)
+        // Ao clicar na linha, abre uma nova aba com os status do jogador (incluindo histórico de batalhas)
         tr.addEventListener("click", () => openPlayerTab(jogador));
 
         const tdPos = document.createElement("td");
@@ -344,11 +344,10 @@
       }
     }
 
-    // Função para abrir uma nova aba com o perfil do jogador, gráfico de evolução de rating e histórico de batalhas
+    // Função para abrir uma nova aba com o perfil do jogador e histórico de batalhas
     async function openPlayerTab(jogador) {
       const novaAba = window.open('', '_blank');
 
-      // HTML da nova aba, incluindo Chart.js via CDN
       let html = `
         <!DOCTYPE html>
         <html lang="pt-BR">
@@ -364,10 +363,7 @@
             .battle span { display: inline-block; min-width: 250px; }
             .winner { color: green; }
             .loser { color: red; }
-            #chart-container { margin-bottom: 30px; }
           </style>
-          <!-- Chart.js CDN -->
-          <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         </head>
         <body>
           <div class="container">
@@ -375,17 +371,13 @@
             <p><strong>Elo Atual:</strong> ${jogador.elo}</p>
             <p><strong>País:</strong> ${jogador.pais}</p>
             <img src="${jogador.flag}" alt="${jogador.pais}" class="flag" style="width:64px; margin-bottom:20px;">
-            <div id="chart-container">
-              <canvas id="ratingChart"></canvas>
-            </div>
             <h2>Histórico de Batalhas</h2>
             <div id="battle-history">
               <p>Carregando batalhas...</p>
             </div>
           </div>
           <script>
-            // Função para buscar batalhas e montar o gráfico e histórico
-            async function loadDataAndRender() {
+            async function loadBattles() {
               try {
                 const response = await fetch("${API_URL}/battles");
                 if (!response.ok) return [];
@@ -395,121 +387,15 @@
                 return [];
               }
             }
-
-            async function renderChartAndHistory() {
-              const battles = await loadDataAndRender();
-              // Filtra as batalhas que envolvem o jogador atual
-              let myBattles = battles.filter(battle =>
+            async function renderBattles() {
+              const battles = await loadBattles();
+              const container = document.getElementById("battle-history");
+              container.innerHTML = "";
+              const myBattles = battles.filter(battle => 
                 battle.player1.id === ${jogador.id} || battle.player2.id === ${jogador.id}
               );
-
-              if(myBattles.length > 0){
-                // Ordena as batalhas por timestamp (assumindo que timestamp seja uma string de data)
-                myBattles.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-
-                // Arrays para os pontos do gráfico
-                const labels = []; // poder ser o índice ou a data formatada
-                const myRatingData = [];
-                const oppRatingData = [];
-                const myTooltips = [];
-                const oppTooltips = [];
-
-                // Para cada batalha, calcula o rating pós-batalha do jogador e pega o rating do oponente
-                myBattles.forEach((battle, index) => {
-                  let myData, oppData;
-                  if(battle.player1.id === ${jogador.id}){
-                    myData = battle.player1;
-                    oppData = battle.player2;
-                  } else {
-                    myData = battle.player2;
-                    oppData = battle.player1;
-                  }
-                  // O rating pós-batalha é ratingBefore + diff
-                  const myRatingAfter = myData.ratingBefore + myData.diff;
-                  // Para o oponente, utilizamos o ratingBefore da batalha
-                  const oppRating = oppData.ratingBefore;
-                  
-                  // Usaremos o índice da batalha como label (pode ser aprimorado para datas)
-                  labels.push("B" + (index + 1));
-                  myRatingData.push(myRatingAfter);
-                  oppRatingData.push(oppRating);
-                  myTooltips.push(myData.nome + " (" + myRatingAfter + ")");
-                  oppTooltips.push(oppData.nome + " (" + oppRating + ")");
-                });
-
-                // Configura o gráfico utilizando Chart.js
-                const ctx = document.getElementById('ratingChart').getContext('2d');
-                new Chart(ctx, {
-                  type: 'line',
-                  data: {
-                    labels: labels,
-                    datasets: [
-                      {
-                        label: 'Meu Rating',
-                        data: myRatingData,
-                        borderColor: 'blue',
-                        backgroundColor: 'rgba(0, 0, 255, 0.1)',
-                        tension: 0.3,
-                        fill: false,
-                        pointRadius: 5,
-                        pointHoverRadius: 7,
-                        // Usamos os tooltips customizados abaixo
-                      },
-                      {
-                        label: 'Rating dos Oponentes',
-                        data: oppRatingData,
-                        borderColor: 'red',
-                        backgroundColor: 'rgba(255, 0, 0, 0.1)',
-                        showLine: false,
-                        pointRadius: 5,
-                        pointHoverRadius: 7,
-                      }
-                    ]
-                  },
-                  options: {
-                    plugins: {
-                      tooltip: {
-                        callbacks: {
-                          // Customiza o tooltip para cada dataset
-                          label: function(context) {
-                            const datasetIndex = context.datasetIndex;
-                            const index = context.dataIndex;
-                            if(datasetIndex === 0){
-                              return 'Meu: ' + myTooltips[index];
-                            } else {
-                              return 'Oponente: ' + oppTooltips[index];
-                            }
-                          }
-                        }
-                      }
-                    },
-                    scales: {
-                      y: {
-                        beginAtZero: true,
-                        title: {
-                          display: true,
-                          text: 'Rating'
-                        }
-                      },
-                      x: {
-                        title: {
-                          display: true,
-                          text: 'Batalhas'
-                        }
-                      }
-                    }
-                  }
-                });
-              } else {
-                // Se não há batalhas, remove o canvas e exibe mensagem
-                document.getElementById("chart-container").innerHTML = "<p>Sem dados para o gráfico.</p>";
-              }
-
-              // Renderiza o histórico de batalhas
-              const historyContainer = document.getElementById("battle-history");
-              historyContainer.innerHTML = "";
               if (myBattles.length === 0) {
-                historyContainer.innerHTML = "<p>Sem batalhas registradas.</p>";
+                container.innerHTML = "<p>Sem batalhas registradas.</p>";
                 return;
               }
               myBattles.forEach(battle => {
@@ -534,10 +420,10 @@
                     <span>\${oppEmoji} \${oppData.nome}: \${oppData.ratingBefore} \${oppDiff}</span>
                   </div>
                 \`;
-                historyContainer.innerHTML += battleHtml;
+                container.innerHTML += battleHtml;
               });
             }
-            renderChartAndHistory();
+            renderBattles();
           <\/script>
         </body>
         </html>
