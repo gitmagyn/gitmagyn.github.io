@@ -193,7 +193,7 @@
   </div>
 
   <script>
-    const API_URL = "https://8a7b7e9e-26e4-4c56-96f2-ff9d7e38aeaf-00-27yl2tvgyn416.picard.replit.dev";
+    const API_URL = "https://seu-api-url"; // Atualize para sua URL
 
     const params = new URLSearchParams(window.location.search);
     const isAdmin = params.get("token") === "isadmintrue";
@@ -214,10 +214,24 @@
           return [];
         }
         const data = await response.json();
-        console.log("Dados recebidos:", data);
         return data;
       } catch (error) {
         console.error("Erro ao buscar jogadores:", error);
+        return [];
+      }
+    }
+
+    async function fetchBattles() {
+      try {
+        const response = await fetch(API_URL + "/battles");
+        if (!response.ok) {
+          console.error("Erro ao buscar batalhas, status:", response.status);
+          return [];
+        }
+        const data = await response.json();
+        return data;
+      } catch (error) {
+        console.error("Erro ao buscar batalhas:", error);
         return [];
       }
     }
@@ -232,7 +246,7 @@
       jogadores.forEach((jogador, index) => {
         const tr = document.createElement("tr");
 
-        // Ao clicar na linha, abre uma nova aba com os status do jogador
+        // Ao clicar na linha, abre uma nova aba com os status do jogador (incluindo histórico de batalhas)
         tr.addEventListener("click", () => openPlayerTab(jogador));
 
         const tdPos = document.createElement("td");
@@ -262,7 +276,7 @@
           btnEdit.textContent = "Edit";
           btnEdit.className = "edit-btn";
           btnEdit.addEventListener("click", (event) => {
-            event.stopPropagation(); // Evita abrir a nova aba
+            event.stopPropagation();
             editPlayer(jogador.id);
           });
           tdAcao.appendChild(btnEdit);
@@ -271,7 +285,7 @@
           btnDelete.textContent = "Delete";
           btnDelete.className = "delete-btn";
           btnDelete.addEventListener("click", (event) => {
-            event.stopPropagation(); // Evita abrir a nova aba
+            event.stopPropagation();
             deletePlayer(jogador.id);
           });
           tdAcao.appendChild(btnDelete);
@@ -285,16 +299,13 @@
 
     async function addPlayer(jogador) {
       try {
-        const response = await fetch(API_URL + "/players", {
+        await fetch(API_URL + "/players", {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
           },
           body: JSON.stringify(jogador)
         });
-        if (!response.ok) {
-          console.error("Erro ao adicionar jogador, status:", response.status);
-        }
         renderTable();
       } catch (error) {
         console.error("Erro ao adicionar jogador:", error);
@@ -310,16 +321,11 @@
         elo: parseInt(novoElo)
       };
       try {
-        const response = await fetch(API_URL + "/players/" + id, {
+        await fetch(API_URL + "/players/" + id, {
           method: "PUT",
-          headers: {
-            "Content-Type": "application/json"
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(updatedData)
         });
-        if (!response.ok) {
-          console.error("Erro ao editar jogador, status:", response.status);
-        }
         renderTable();
       } catch (error) {
         console.error("Erro ao editar jogador:", error);
@@ -329,72 +335,104 @@
     async function deletePlayer(id) {
       if (!confirm("Tem certeza que deseja deletar este jogador?")) return;
       try {
-        const response = await fetch(API_URL + "/players/" + id, {
+        await fetch(API_URL + "/players/" + id, {
           method: "DELETE"
         });
-        if (!response.ok) {
-          console.error("Erro ao deletar jogador, status:", response.status);
-        }
         renderTable();
       } catch (error) {
         console.error("Erro ao deletar jogador:", error);
       }
     }
 
-    // Função para abrir uma nova aba com os status do jogador
-    function openPlayerTab(jogador) {
+    // Função para abrir uma nova aba com o perfil do jogador e histórico de batalhas
+    async function openPlayerTab(jogador) {
       const novaAba = window.open('', '_blank');
-      novaAba.document.write(`
+
+      let html = `
         <!DOCTYPE html>
         <html lang="pt-BR">
         <head>
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1">
-          <title>Status do Jogador</title>
+          <title>Perfil de ${jogador.nome}</title>
           <style>
-            body {
-              font-family: Arial, sans-serif;
-              background: #f4f4f4;
-              color: #333;
-              margin: 20px;
-            }
-            .container {
-              max-width: 800px;
-              margin: auto;
-              background: #fff;
-              padding: 20px;
-              border-radius: 8px;
-              box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            }
-            .container h1 {
-              margin-bottom: 15px;
-            }
-            .container p {
-              font-size: 1.2em;
-              margin-bottom: 10px;
-            }
-            img.flag {
-              width: 64px;
-              height: auto;
-              display: block;
-              margin-top: 10px;
-            }
+            body { font-family: Arial, sans-serif; background: #f4f4f4; color: #333; padding: 20px; }
+            .container { max-width: 800px; margin: auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+            h1 { margin-bottom: 15px; }
+            .battle { border-top: 1px solid #ddd; padding: 10px 0; }
+            .battle span { display: inline-block; min-width: 250px; }
+            .winner { color: green; }
+            .loser { color: red; }
           </style>
         </head>
         <body>
           <div class="container">
             <h1>${jogador.nome}</h1>
-            <p><strong>Elo:</strong> ${jogador.elo}</p>
+            <p><strong>Elo Atual:</strong> ${jogador.elo}</p>
             <p><strong>País:</strong> ${jogador.pais}</p>
-            <img src="${jogador.flag}" alt="${jogador.pais}" class="flag">
+            <img src="${jogador.flag}" alt="${jogador.pais}" class="flag" style="width:64px; margin-bottom:20px;">
+            <h2>Histórico de Batalhas</h2>
+            <div id="battle-history">
+              <p>Carregando batalhas...</p>
+            </div>
           </div>
+          <script>
+            async function loadBattles() {
+              try {
+                const response = await fetch("${API_URL}/battles");
+                if (!response.ok) return [];
+                return await response.json();
+              } catch (error) {
+                console.error("Erro ao buscar batalhas:", error);
+                return [];
+              }
+            }
+            async function renderBattles() {
+              const battles = await loadBattles();
+              const container = document.getElementById("battle-history");
+              container.innerHTML = "";
+              const myBattles = battles.filter(battle => 
+                battle.player1.id === ${jogador.id} || battle.player2.id === ${jogador.id}
+              );
+              if (myBattles.length === 0) {
+                container.innerHTML = "<p>Sem batalhas registradas.</p>";
+                return;
+              }
+              myBattles.forEach(battle => {
+                let myData, oppData, myEmoji, oppEmoji;
+                if (battle.player1.id === ${jogador.id}) {
+                  myData = battle.player1;
+                  oppData = battle.player2;
+                  myEmoji = battle.winner === "player1" ? "🟢" : "🔴";
+                  oppEmoji = battle.winner === "player1" ? "🔴" : "🟢";
+                } else {
+                  myData = battle.player2;
+                  oppData = battle.player1;
+                  myEmoji = battle.winner === "player2" ? "🟢" : "🔴";
+                  oppEmoji = battle.winner === "player2" ? "🔴" : "🟢";
+                }
+                const myDiff = myData.diff > 0 ? "(+" + myData.diff + ")" : "(" + myData.diff + ")";
+                const oppDiff = oppData.diff > 0 ? "(+" + oppData.diff + ")" : "(" + oppData.diff + ")";
+                const battleHtml = \`
+                  <div class="battle">
+                    <span>\${myEmoji} \${myData.nome}: \${myData.ratingBefore} \${myDiff}</span>
+                    <span>vs</span>
+                    <span>\${oppEmoji} \${oppData.nome}: \${oppData.ratingBefore} \${oppDiff}</span>
+                  </div>
+                \`;
+                container.innerHTML += battleHtml;
+              });
+            }
+            renderBattles();
+          <\/script>
         </body>
         </html>
-      `);
+      `;
+      novaAba.document.write(html);
       novaAba.document.close();
     }
 
-    // Evento do formulário de batalha
+    // Evento do formulário de batalha via endpoint /battles
     if (isAdmin) {
       document.getElementById("battle-form").addEventListener("submit", async (e) => {
         e.preventDefault();
@@ -402,40 +440,18 @@
         const nickname2 = document.getElementById("player2").value.trim();
         const winner = document.querySelector('input[name="winner"]:checked').value;
         
-        // Busca os jogadores a partir do nickname (assumindo que 'nome' é o nickname)
-        const players = await fetchPlayers();
-        const playerA = players.find(p => p.nome === nickname1);
-        const playerB = players.find(p => p.nome === nickname2);
-        
-        if (!playerA || !playerB) {
-          alert("Um ou ambos os jogadores não foram encontrados.");
-          return;
-        }
-        
-        // Cálculo do rating utilizando o algoritmo Elo
-        const K = 32;
-        const R_A = playerA.elo;
-        const R_B = playerB.elo;
-        const E_A = 1 / (1 + Math.pow(10, ((R_B - R_A) / 400)));
-        const E_B = 1 / (1 + Math.pow(10, ((R_A - R_B) / 400)));
-        const S_A = winner === "player1" ? 1 : 0;
-        const S_B = winner === "player2" ? 1 : 0;
-        const newRatingA = Math.round(R_A + K * (S_A - E_A));
-        const newRatingB = Math.round(R_B + K * (S_B - E_B));
-        
         try {
-          const updateA = await fetch(API_URL + "/players/" + playerA.id, {
-            method: "PUT",
+          const response = await fetch(API_URL + "/battles", {
+            method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ nome: playerA.nome, elo: newRatingA })
+            body: JSON.stringify({
+              player1Nome: nickname1,
+              player2Nome: nickname2,
+              winner: winner
+            })
           });
-          const updateB = await fetch(API_URL + "/players/" + playerB.id, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ nome: playerB.nome, elo: newRatingB })
-          });
-          if (!updateA.ok || !updateB.ok) {
-            console.error("Erro ao atualizar ratings dos jogadores.");
+          if (!response.ok) {
+            console.error("Erro ao registrar batalha, status:", response.status);
           } else {
             alert("Batalha registrada e ratings atualizados!");
           }
@@ -445,7 +461,6 @@
         }
       });
       
-      // Também adiciona o listener para o formulário de adicionar jogador
       document.getElementById("add-player-form").addEventListener("submit", async (e) => {
         e.preventDefault();
         const nomeInput = document.getElementById("nome");
