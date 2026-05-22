@@ -26,7 +26,6 @@
 
         #input-area { display: flex; align-items: center; }
         
-        /* O cursor só aparece se não estiver processando */
         #cursor { width: 10px; height: 18px; background-color: #fff; animation: blink 1s step-end infinite; }
         @keyframes blink { 50% { opacity: 0; } }
         
@@ -37,7 +36,7 @@
     
     <div id="terminal">
         <div id="output">
-            <div class="line">Linux Terminal AI v1.0</div>
+            <div class="line">Linux Terminal</div>
         </div>
 
         <div id="input-area">
@@ -58,7 +57,7 @@
         const outputDiv = document.getElementById('output');
         const cursor = document.getElementById('cursor');
         
-        let isProcessing = false; // Flag para controlar o estado
+        let isProcessing = false;
 
         ghostInput.addEventListener('input', () => {
             if (!isProcessing) {
@@ -69,12 +68,11 @@
         ghostInput.addEventListener('keydown', async (e) => {
             if (e.key === 'Enter') {
                 const command = ghostInput.value;
-                if (!command || isProcessing) return; // Bloqueia se vazio ou processando
+                if (!command || isProcessing) return;
 
-                // --- BLOQUEAR INPUT ---
                 isProcessing = true;
-                ghostInput.disabled = true; // Impede digitação
-                cursor.style.display = 'none'; // Esconde cursor
+                ghostInput.disabled = true;
+                cursor.style.display = 'none';
 
                 const commandLine = document.createElement('div');
                 commandLine.className = 'line';
@@ -111,11 +109,10 @@
                 } catch (error) {
                     outputDiv.innerHTML += `<div class="line" style="color:red">Erro: falha na comunicação.</div>`;
                 } finally {
-                    // --- LIBERAR INPUT ---
                     isProcessing = false;
-                    ghostInput.disabled = false; // Reabilita
-                    cursor.style.display = 'inline-block'; // Mostra cursor
-                    ghostInput.focus(); // Devolve o foco
+                    ghostInput.disabled = false;
+                    cursor.style.display = 'inline-block';
+                    ghostInput.focus();
                 }
             }
         });
